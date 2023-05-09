@@ -1,0 +1,62 @@
+from hubspot import HubSpot
+import json
+import pymongo
+from pymongo.mongo_client import MongoClient
+import pandas as pd
+import datetime
+from pymongo.server_api import ServerApi
+from hubspot.crm.companies import ApiException
+import requests
+
+access_token = 'pat-na1-aeb31057-5ef2-40cb-8707-97c5bbdd73e3'
+api_client = HubSpot(access_token=access_token)
+
+db_client = MongoClient(
+    "mongodb+srv://viraj:viraj@etl.cy6ldzf.mongodb.net/?retryWrites=true&w=majority",
+    server_api=ServerApi("1"),
+)
+db = db_client.Test
+
+collection = db.HubSpot_CRM_Companies
+
+headers = {'Authorization' : f'Bearer {access_token}'}
+url = 'https://api.hubapi.com/crm/v3/objects/companies'
+data = []
+try:
+    keep_going = True
+    while keep_going:        
+        api_response = requests.get( url  , headers=headers)
+        # api_response = requests.get('https://api.hubapi.com/crm/v3/objects/companies?hs_static_app=endpoint-reference-ui&hs_static_app_version=1.2583&limit=100&archived=false&after=15653340973'  , headers={'Authorization' : f'Bearer {access_token}'})
+        # if api_response.json()['paging']['next']['link'] is None:
+        if 'paging' in api_response.json().keys():
+            data = data + api_response.json()['results']
+            url = api_response.json()['paging']['next']['link']
+            # print(data)
+        else:
+            data = data + api_response.json()['results']
+            # print(data)
+            keep_going = False
+        
+        
+     
+    print(len(data))
+except ApiException as e:
+    print("Exception when calling basic_api->get_page: %s\n" % e)
+
+    # api_response = requests.get('https://api.hubapi.com/crm/v3/objects/companies'  , headers={'Authorization' : f'Bearer {access_token}'})
+    
+    # list = api_response.json().keys()    
+    # api_response = requests.get('https://api.hubapi.com/crm/v3/objects/companies'  , headers={'Authorization' : f'Bearer {access_token}'})
+        
+    # list = api_response.json() 
+        
+    # print(list.keys())
+collection.insert_many(data)
+
+
+
+
+
+
+
+
